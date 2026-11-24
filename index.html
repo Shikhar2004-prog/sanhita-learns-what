@@ -14,23 +14,34 @@
            --accent:#fb923c; --accent-soft:#2a2118; --line:#2c303a; }
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--ink);
        font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{padding:48px 20px 28px;text-align:center}
+  header{padding:48px 20px 28px;text-align:center;position:relative}
   h1{margin:0;font-size:clamp(2rem,6vw,3.2rem);letter-spacing:-.02em}
   header p{margin:8px 0 0;color:var(--muted)}
+  #ownerBtn{position:absolute;top:14px;right:14px;font-size:.8rem;padding:5px 10px;color:var(--muted)}
+  body.owner #ownerBtn{color:var(--accent);border-color:var(--accent)}
   main{max-width:960px;margin:0 auto;padding:0 16px 80px}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
          background:var(--card);color:var(--ink);padding:9px 14px}
   button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.6;cursor:default}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
   button.danger{color:#b91c1c}
   input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);
        border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
   textarea{resize:vertical;min-height:70px}
+  .owner-only{display:none!important}
+  body.owner .toolbar.owner-only, body.owner .sec-actions.owner-only{display:flex!important}
+  body.owner button.owner-only{display:inline-block!important}
   .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
   .toolbar .grow{flex:1;min-width:180px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+         padding:16px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px}
+  .panel ol{margin:0;padding-left:20px;color:var(--muted);font-size:.9rem}
+  .panel a{color:var(--accent)}
   .section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
            margin-bottom:14px;overflow:hidden}
   .sec-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
@@ -42,7 +53,8 @@
   .sec-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
   .section.open .sec-body{display:block}
   .sec-actions{display:flex;gap:8px;margin:14px 0}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
+  .sec-actions + .form + .grid{margin-top:0}
   .item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg);
         display:flex;flex-direction:column}
   .thumb{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat;display:block}
@@ -52,66 +64,170 @@
   .item h3{margin:0;font-size:1rem}
   .item p{margin:0;color:var(--muted);font-size:.9rem;white-space:pre-wrap}
   .item .del{align-self:flex-start;margin-top:auto;padding:4px 10px;font-size:.8rem}
-  .form{border:1px dashed var(--accent);border-radius:12px;padding:14px;margin-bottom:16px;
+  .form{border:1px dashed var(--accent);border-radius:12px;padding:14px;margin:14px 0;
         display:none;gap:10px;flex-direction:column;background:var(--accent-soft)}
   .form.show{display:flex}
-  .form .preview{aspect-ratio:16/9;max-width:320px;border-radius:10px;background:#000 center/cover;display:none}
+  .form .preview{aspect-ratio:16/9;max-width:320px;width:100%;border-radius:10px;background:#000 center/cover;display:none}
   .form .preview.show{display:block}
   .form .row{display:flex;gap:8px}
   .empty{color:var(--muted);text-align:center;padding:18px 0}
   .note{color:var(--muted);font-size:.85rem;text-align:center;margin-top:30px}
+  #status{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);
+          color:var(--bg);padding:8px 16px;border-radius:99px;font-size:.85rem;z-index:10}
+  #status.err{background:#b91c1c;color:#fff}
   @media (max-width:520px){
-    header{padding:32px 16px 18px}
+    header{padding:44px 16px 18px}
     .toolbar button{flex:1}
   }
 </style>
 </head>
 <body>
 <header>
+  <button id="ownerBtn">Owner login</button>
   <h1>Sanhita Learns What</h1>
   <p>My collection of good lectures</p>
 </header>
 
 <main>
-  <div class="toolbar">
+  <div class="panel" id="loginPanel" hidden>
+    <strong>Owner login</strong>
+    <ol>
+      <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → New fine-grained token</a>.</li>
+      <li>Repository access: only <b>sanhita-learns-what</b>. Permissions: <b>Contents → Read and write</b>.</li>
+      <li>Generate it and paste it below. It stays only in this browser.</li>
+    </ol>
+    <input id="tokenInput" type="password" placeholder="github_pat_..." autocomplete="off">
+    <div class="toolbar" style="margin:0">
+      <button class="primary" id="loginBtn">Log in</button>
+      <button id="logoutBtn" hidden>Log out</button>
+      <button id="closeLogin">Close</button>
+    </div>
+  </div>
+
+  <div class="toolbar owner-only">
     <input id="newSecName" class="grow" placeholder="New section name, e.g. Statistics">
     <button class="primary" id="addSecBtn">+ Add section</button>
-    <button id="exportBtn" title="Download your data as a backup / to commit to GitHub">Export</button>
-    <button id="importBtn">Import</button>
-    <input id="importFile" type="file" accept="application/json" hidden>
   </div>
-  <div id="sections"></div>
-  <p class="note">Data is saved in this browser. Use Export to back it up or move it to another device.</p>
+  <div id="sections"><div class="empty">Loading…</div></div>
+  <p class="note">Anyone can view. Only the owner can add or remove lectures.</p>
 </main>
+<div id="status" hidden></div>
 
 <script>
-const KEY = "sanhita-learns-what-v1";
-const seed = [
-  {id: uid(), name: "Mathematics", open: true, items: []},
-  {id: uid(), name: "Machine Learning", open: false, items: []}
-];
-let data = load();
+const OWNER = "Shikhar2004-prog", REPO = "sanhita-learns-what", FILE = "lectures.json", BRANCH = "main";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+const TOKEN_KEY = "sanhita-token", OPEN_KEY = "sanhita-open";
 
-function uid(){ return Math.random().toString(36).slice(2,10); }
-function load(){
-  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(Array.isArray(d)) return d; }catch(e){}
-  return seed;
-}
-function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+let data = [];
+let token = localStorage.getItem(TOKEN_KEY) || "";
+let openSet = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || "[]"));
+let ownerMode = false;
 
-function ytId(url){
-  const m = String(url).trim().match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
-  return m ? m[1] : null;
-}
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ytId = u => { const m = String(u).trim().match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/); return m ? m[1] : null; };
 const thumb = id => `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+/* ---------- status toast ---------- */
+const statusEl = document.getElementById("status");
+let statusTimer;
+function say(msg, err = false, sticky = false){
+  statusEl.textContent = msg; statusEl.className = err ? "err" : ""; statusEl.hidden = false;
+  clearTimeout(statusTimer);
+  if(!sticky) statusTimer = setTimeout(() => statusEl.hidden = true, err ? 6000 : 2000);
+}
+
+/* ---------- GitHub storage ---------- */
+const authHeaders = (accept) => {
+  const h = {Accept: accept};
+  if(token) h.Authorization = "Bearer " + token;
+  return h;
+};
+async function loadData(){
+  const r = await fetch(`${API}/contents/${FILE}?ref=${BRANCH}&t=${Date.now()}`,
+    {headers: authHeaders("application/vnd.github.raw+json"), cache: "no-store"});
+  if(r.status === 404) return [];
+  if(!r.ok) throw new Error("Could not load lectures (" + r.status + ")");
+  const d = JSON.parse(await r.text());
+  return Array.isArray(d) ? d : [];
+}
+function toBase64(str){
+  const bytes = new TextEncoder().encode(str); let bin = "";
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+async function pushToGitHub(){
+  let sha;
+  const m = await fetch(`${API}/contents/${FILE}?ref=${BRANCH}&t=${Date.now()}`,
+    {headers: authHeaders("application/vnd.github+json"), cache: "no-store"});
+  if(m.ok) sha = (await m.json()).sha;
+  else if(m.status !== 404) throw new Error("Could not reach GitHub (" + m.status + ")");
+  const body = {message: "Update lectures", branch: BRANCH,
+                content: toBase64(JSON.stringify(data, null, 2) + "\n")};
+  if(sha) body.sha = sha;
+  const r = await fetch(`${API}/contents/${FILE}`, {method: "PUT",
+    headers: {...authHeaders("application/vnd.github+json"), "Content-Type": "application/json"},
+    body: JSON.stringify(body)});
+  if(r.status === 401 || r.status === 403 || r.status === 404)
+    throw new Error("GitHub refused the save. Check your token has Contents read/write on this repo.");
+  if(!r.ok) throw new Error("Save failed (" + r.status + ")");
+}
+let saveChain = Promise.resolve();
+function persist(){
+  say("Saving…", false, true);
+  saveChain = saveChain.then(pushToGitHub)
+    .then(() => say("Saved. Everyone sees it now."))
+    .catch(e => say(e.message, true));
+  return saveChain;
+}
+
+/* ---------- owner mode ---------- */
+async function checkOwner(){
+  if(!token){ setOwner(false); return false; }
+  try{
+    const r = await fetch(API, {headers: authHeaders("application/vnd.github+json")});
+    const ok = r.ok && (await r.json()).permissions?.push === true;
+    setOwner(ok); return ok;
+  }catch(e){ setOwner(false); return false; }
+}
+function setOwner(on){
+  ownerMode = on;
+  document.body.classList.toggle("owner", on);
+  document.getElementById("ownerBtn").textContent = on ? "Owner ✓" : "Owner login";
+  document.getElementById("logoutBtn").hidden = !on;
+  document.getElementById("loginBtn").hidden = on;
+  document.getElementById("tokenInput").hidden = on;
+}
+const loginPanel = document.getElementById("loginPanel");
+document.getElementById("ownerBtn").onclick = () => { loginPanel.hidden = !loginPanel.hidden; };
+document.getElementById("closeLogin").onclick = () => loginPanel.hidden = true;
+document.getElementById("loginBtn").onclick = async () => {
+  const t = document.getElementById("tokenInput").value.trim();
+  if(!t) return;
+  token = t;
+  if(await checkOwner()){
+    localStorage.setItem(TOKEN_KEY, t); loginPanel.hidden = true;
+    document.getElementById("tokenInput").value = ""; say("Logged in as owner.");
+  }else{
+    token = ""; say("That token can't write to this repo.", true);
+  }
+};
+document.getElementById("logoutBtn").onclick = () => {
+  token = ""; localStorage.removeItem(TOKEN_KEY); setOwner(false); say("Logged out.");
+};
+
+/* ---------- rendering ---------- */
+function saveOpen(){ localStorage.setItem(OPEN_KEY, JSON.stringify([...openSet])); }
 function render(){
   const box = document.getElementById("sections");
   box.innerHTML = "";
+  if(!data.length){
+    box.innerHTML = '<div class="empty">No sections yet.</div>';
+    return;
+  }
   data.forEach(sec => {
     const el = document.createElement("div");
-    el.className = "section" + (sec.open ? " open" : "");
+    el.className = "section" + (openSet.has(sec.id) ? " open" : "");
     el.innerHTML = `
       <div class="sec-head">
         <span class="chev">▶</span>
@@ -119,7 +235,7 @@ function render(){
         <span class="count">${sec.items.length}</span>
       </div>
       <div class="sec-body">
-        <div class="sec-actions">
+        <div class="sec-actions owner-only">
           <button class="primary add-item">+ Add lecture</button>
           <button class="danger del-sec">Delete section</button>
         </div>
@@ -135,20 +251,23 @@ function render(){
         </div>
         <div class="grid">
           ${sec.items.map(it => `
-            <div class="item" data-id="${it.id}">
+            <div class="item" data-id="${esc(it.id)}">
               <a class="thumb" href="${esc(it.url)}" target="_blank" rel="noopener"
                  style="background-image:url('${thumb(it.vid)}')" aria-label="Open video"></a>
               <div class="meta">
                 <h3>${esc(it.title)}</h3>
                 ${it.desc ? `<p>${esc(it.desc)}</p>` : ""}
-                <button class="del danger">Remove</button>
+                <button class="del danger owner-only">Remove</button>
               </div>
             </div>`).join("")}
         </div>
-        ${sec.items.length ? "" : '<div class="empty">No lectures yet. Add your first one.</div>'}
+        ${sec.items.length ? "" : '<div class="empty">No lectures yet.</div>'}
       </div>`;
 
-    el.querySelector(".sec-head").onclick = () => { sec.open = !sec.open; save(); render(); };
+    el.querySelector(".sec-head").onclick = () => {
+      openSet.has(sec.id) ? openSet.delete(sec.id) : openSet.add(sec.id);
+      saveOpen(); el.classList.toggle("open");
+    };
 
     const form = el.querySelector(".form");
     const url = el.querySelector(".f-url"), prev = el.querySelector(".preview");
@@ -162,19 +281,19 @@ function render(){
     el.querySelector(".f-save").onclick = () => {
       const title = el.querySelector(".f-title").value.trim();
       const vid = ytId(url.value);
-      if(!title){ alert("Please add a heading."); return; }
-      if(!vid){ alert("That doesn't look like a valid YouTube link."); return; }
+      if(!title) return say("Please add a heading.", true);
+      if(!vid) return say("That doesn't look like a valid YouTube link.", true);
       sec.items.push({id: uid(), title, vid, url: url.value.trim(), desc: el.querySelector(".f-desc").value.trim()});
-      save(); render();
+      openSet.add(sec.id); saveOpen(); render(); persist();
     };
     el.querySelector(".del-sec").onclick = () => {
       if(confirm(`Delete section "${sec.name}" and its ${sec.items.length} lecture(s)?`)){
-        data = data.filter(s => s !== sec); save(); render();
+        data = data.filter(s => s !== sec); render(); persist();
       }
     };
     el.querySelectorAll(".item .del").forEach(b => b.onclick = () => {
       const id = b.closest(".item").dataset.id;
-      sec.items = sec.items.filter(i => i.id !== id); save(); render();
+      sec.items = sec.items.filter(i => i.id !== id); render(); persist();
     });
     box.appendChild(el);
   });
@@ -184,29 +303,24 @@ const nameInput = document.getElementById("newSecName");
 function addSection(){
   const name = nameInput.value.trim();
   if(!name) return nameInput.focus();
-  data.push({id: uid(), name, open: true, items: []});
-  nameInput.value = ""; save(); render();
+  const sec = {id: uid(), name, items: []};
+  data.push(sec); openSet.add(sec.id); saveOpen();
+  nameInput.value = ""; render(); persist();
 }
 document.getElementById("addSecBtn").onclick = addSection;
 nameInput.onkeydown = e => { if(e.key === "Enter") addSection(); };
 
-document.getElementById("exportBtn").onclick = () => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}));
-  a.download = "sanhita-learns-what.json"; a.click();
-};
-const fileIn = document.getElementById("importFile");
-document.getElementById("importBtn").onclick = () => fileIn.click();
-fileIn.onchange = async () => {
+/* ---------- start ---------- */
+(async function start(){
+  checkOwner();
   try{
-    const d = JSON.parse(await fileIn.files[0].text());
-    if(!Array.isArray(d)) throw 0;
-    data = d; save(); render();
-  }catch(e){ alert("Could not read that file."); }
-  fileIn.value = "";
-};
-
-render();
+    data = await loadData();
+    if(!openSet.size && data[0]){ openSet.add(data[0].id); }
+    render();
+  }catch(e){
+    document.getElementById("sections").innerHTML = `<div class="empty">${esc(e.message)}. Please refresh.</div>`;
+  }
+})();
 </script>
 </body>
 </html>
