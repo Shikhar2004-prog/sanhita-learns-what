@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sanhita Learns What</title>
+<style>
+  :root{
+    --bg:#faf7f2; --card:#ffffff; --ink:#1f2430; --muted:#6b7280;
+    --accent:#c2410c; --accent-soft:#fff1e8; --line:#e8e1d6; --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14161b; --card:#1d2027; --ink:#eceef2; --muted:#9aa1ae;
+           --accent:#fb923c; --accent-soft:#2a2118; --line:#2c303a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:48px 20px 28px;text-align:center}
+  h1{margin:0;font-size:clamp(2rem,6vw,3.2rem);letter-spacing:-.02em}
+  header p{margin:8px 0 0;color:var(--muted)}
+  main{max-width:960px;margin:0 auto;padding:0 16px 80px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
+         background:var(--card);color:var(--ink);padding:9px 14px}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:#b91c1c}
+  input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);
+       border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  textarea{resize:vertical;min-height:70px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+  .toolbar .grow{flex:1;min-width:180px}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+           margin-bottom:14px;overflow:hidden}
+  .sec-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
+  .sec-head h2{margin:0;font-size:1.2rem;flex:1}
+  .count{font-size:.8rem;color:var(--accent);background:var(--accent-soft);
+         padding:2px 10px;border-radius:99px}
+  .chev{transition:transform .2s;color:var(--muted)}
+  .section.open .chev{transform:rotate(90deg)}
+  .sec-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .section.open .sec-body{display:block}
+  .sec-actions{display:flex;gap:8px;margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg);
+        display:flex;flex-direction:column}
+  .thumb{position:relative;aspect-ratio:16/9;background:#000 center/cover no-repeat;display:block}
+  .thumb::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;
+        color:#fff;font-size:2rem;text-shadow:0 2px 8px rgba(0,0,0,.6);opacity:.9}
+  .item .meta{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .item h3{margin:0;font-size:1rem}
+  .item p{margin:0;color:var(--muted);font-size:.9rem;white-space:pre-wrap}
+  .item .del{align-self:flex-start;margin-top:auto;padding:4px 10px;font-size:.8rem}
+  .form{border:1px dashed var(--accent);border-radius:12px;padding:14px;margin-bottom:16px;
+        display:none;gap:10px;flex-direction:column;background:var(--accent-soft)}
+  .form.show{display:flex}
+  .form .preview{aspect-ratio:16/9;max-width:320px;border-radius:10px;background:#000 center/cover;display:none}
+  .form .preview.show{display:block}
+  .form .row{display:flex;gap:8px}
+  .empty{color:var(--muted);text-align:center;padding:18px 0}
+  .note{color:var(--muted);font-size:.85rem;text-align:center;margin-top:30px}
+  @media (max-width:520px){
+    header{padding:32px 16px 18px}
+    .toolbar button{flex:1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sanhita Learns What</h1>
+  <p>My collection of good lectures</p>
+</header>
+
+<main>
+  <div class="toolbar">
+    <input id="newSecName" class="grow" placeholder="New section name, e.g. Statistics">
+    <button class="primary" id="addSecBtn">+ Add section</button>
+    <button id="exportBtn" title="Download your data as a backup / to commit to GitHub">Export</button>
+    <button id="importBtn">Import</button>
+    <input id="importFile" type="file" accept="application/json" hidden>
+  </div>
+  <div id="sections"></div>
+  <p class="note">Data is saved in this browser. Use Export to back it up or move it to another device.</p>
+</main>
+
+<script>
+const KEY = "sanhita-learns-what-v1";
+const seed = [
+  {id: uid(), name: "Mathematics", open: true, items: []},
+  {id: uid(), name: "Machine Learning", open: false, items: []}
+];
+let data = load();
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(Array.isArray(d)) return d; }catch(e){}
+  return seed;
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+
+function ytId(url){
+  const m = String(url).trim().match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+const thumb = id => `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function render(){
+  const box = document.getElementById("sections");
+  box.innerHTML = "";
+  data.forEach(sec => {
+    const el = document.createElement("div");
+    el.className = "section" + (sec.open ? " open" : "");
+    el.innerHTML = `
+      <div class="sec-head">
+        <span class="chev">▶</span>
+        <h2>${esc(sec.name)}</h2>
+        <span class="count">${sec.items.length}</span>
+      </div>
+      <div class="sec-body">
+        <div class="sec-actions">
+          <button class="primary add-item">+ Add lecture</button>
+          <button class="danger del-sec">Delete section</button>
+        </div>
+        <div class="form">
+          <input class="f-title" placeholder="Heading">
+          <input class="f-url" placeholder="Paste YouTube link">
+          <div class="preview"></div>
+          <textarea class="f-desc" placeholder="Short description"></textarea>
+          <div class="row">
+            <button class="primary f-save">Save</button>
+            <button class="f-cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="grid">
+          ${sec.items.map(it => `
+            <div class="item" data-id="${it.id}">
+              <a class="thumb" href="${esc(it.url)}" target="_blank" rel="noopener"
+                 style="background-image:url('${thumb(it.vid)}')" aria-label="Open video"></a>
+              <div class="meta">
+                <h3>${esc(it.title)}</h3>
+                ${it.desc ? `<p>${esc(it.desc)}</p>` : ""}
+                <button class="del danger">Remove</button>
+              </div>
+            </div>`).join("")}
+        </div>
+        ${sec.items.length ? "" : '<div class="empty">No lectures yet. Add your first one.</div>'}
+      </div>`;
+
+    el.querySelector(".sec-head").onclick = () => { sec.open = !sec.open; save(); render(); };
+
+    const form = el.querySelector(".form");
+    const url = el.querySelector(".f-url"), prev = el.querySelector(".preview");
+    el.querySelector(".add-item").onclick = () => { form.classList.toggle("show"); el.querySelector(".f-title").focus(); };
+    el.querySelector(".f-cancel").onclick = () => form.classList.remove("show");
+    url.oninput = () => {
+      const id = ytId(url.value);
+      prev.classList.toggle("show", !!id);
+      prev.style.backgroundImage = id ? `url('${thumb(id)}')` : "";
+    };
+    el.querySelector(".f-save").onclick = () => {
+      const title = el.querySelector(".f-title").value.trim();
+      const vid = ytId(url.value);
+      if(!title){ alert("Please add a heading."); return; }
+      if(!vid){ alert("That doesn't look like a valid YouTube link."); return; }
+      sec.items.push({id: uid(), title, vid, url: url.value.trim(), desc: el.querySelector(".f-desc").value.trim()});
+      save(); render();
+    };
+    el.querySelector(".del-sec").onclick = () => {
+      if(confirm(`Delete section "${sec.name}" and its ${sec.items.length} lecture(s)?`)){
+        data = data.filter(s => s !== sec); save(); render();
+      }
+    };
+    el.querySelectorAll(".item .del").forEach(b => b.onclick = () => {
+      const id = b.closest(".item").dataset.id;
+      sec.items = sec.items.filter(i => i.id !== id); save(); render();
+    });
+    box.appendChild(el);
+  });
+}
+
+const nameInput = document.getElementById("newSecName");
+function addSection(){
+  const name = nameInput.value.trim();
+  if(!name) return nameInput.focus();
+  data.push({id: uid(), name, open: true, items: []});
+  nameInput.value = ""; save(); render();
+}
+document.getElementById("addSecBtn").onclick = addSection;
+nameInput.onkeydown = e => { if(e.key === "Enter") addSection(); };
+
+document.getElementById("exportBtn").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:"application/json"}));
+  a.download = "sanhita-learns-what.json"; a.click();
+};
+const fileIn = document.getElementById("importFile");
+document.getElementById("importBtn").onclick = () => fileIn.click();
+fileIn.onchange = async () => {
+  try{
+    const d = JSON.parse(await fileIn.files[0].text());
+    if(!Array.isArray(d)) throw 0;
+    data = d; save(); render();
+  }catch(e){ alert("Could not read that file."); }
+  fileIn.value = "";
+};
+
+render();
+</script>
+</body>
+</html>
